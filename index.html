@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#1f5f8b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="建基法DB">
+<title>建築基準法 条文データベース</title>
+<style>
+:root{
+  --bg:#f6f5f1; --panel:#ffffff; --ink:#1d1d1b; --sub:#6b6a64; --line:#e2e0d8;
+  --accent:#1f5f8b; --accent-weak:#e6eff6; --H:#9a3b1f; --R:#1f5f8b; --K:#3f6b2a; --X:#7a5a12;
+  --mark:#fff0a8;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#161615;--panel:#1f1f1d;--ink:#ecebe6;--sub:#a3a199;--line:#34332f;--accent:#7fb5dc;--accent-weak:#22303a;--H:#e08a6a;--R:#7fb5dc;--K:#98c780;--X:#d6b35a;--mark:#5a4d10}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI",Meiryo,sans-serif;font-size:15px;line-height:1.75}
+a{color:var(--accent)}
+button{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{font-size:calc(15px * var(--fs,1))}
+#main,#side{padding-bottom:env(safe-area-inset-bottom)}
+.fs{display:flex;gap:4px;margin-left:auto}.tabs .fs button{border:1px solid var(--line);background:var(--panel);border-radius:8px;min-width:34px;height:30px;cursor:pointer;font-size:13px}
+.hrow{display:flex;align-items:center;gap:10px;padding:10px 14px 6px}
+.brand{font-weight:700;font-size:15px;white-space:nowrap}
+.brand small{display:block;font-weight:400;color:var(--sub);font-size:11px;line-height:1.3}
+.search{flex:1;position:relative}
+.search input{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:16px}
+.tabs{display:flex;gap:4px;padding:0 10px 6px;overflow-x:auto}
+.tabs button{border:0;background:none;padding:6px 12px;border-radius:999px;color:var(--sub);white-space:nowrap;cursor:pointer;font-size:14px}
+.tabs button.on{background:var(--accent-weak);color:var(--accent);font-weight:600}
+.wrap{display:grid;grid-template-columns:minmax(280px,340px) 1fr;max-width:1280px;margin:0 auto;min-height:calc(100vh - 100px)}
+#side{border-right:1px solid var(--line);background:var(--panel);overflow:auto;-webkit-overflow-scrolling:touch;height:calc(100dvh - var(--hh,92px));position:sticky;top:var(--hh,92px)}
+#main{padding:18px 26px 80px;min-width:0}
+@media (min-width:700px) and (max-width:1024px){ .wrap{grid-template-columns:300px 1fr} #main{padding:16px 18px 80px} }
+@media (max-width:699px){
+  .wrap{display:block}
+  #side{position:static;height:auto;border-right:0}
+  body.reading #side{display:none}
+  body:not(.reading) #main{display:none}
+  #main{padding:14px 16px 90px}
+  .brand small{display:none}
+}
+.backbar{display:none}
+@media (max-width:699px){ body.reading .backbar{display:flex;position:sticky;top:var(--hh,92px);z-index:5;background:var(--bg);padding:6px 0;margin-top:-6px} .row{padding-top:9px;padding-bottom:9px} .chip{padding:6px 10px} .pill{padding:7px 14px} }
+@media (pointer:coarse){ .body a[data-t]{padding:2px 0} }
+.backbar{gap:8px;align-items:center;margin-bottom:8px}
+.pill{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 12px;cursor:pointer;font-size:13px}
+.lawchip{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:0 5px;margin-right:6px;color:#fff;vertical-align:1px}
+.lc-H{background:var(--H)}.lc-R{background:var(--R)}.lc-K{background:var(--K)}.lc-X{background:var(--X)}
+/* side lists */
+.sec{padding:8px 0}
+.law-h{position:sticky;top:0;background:var(--panel);padding:8px 14px;font-weight:700;border-bottom:1px solid var(--line);cursor:pointer;display:flex;justify-content:space-between;z-index:1}
+.ch{padding:6px 14px 2px;font-size:12.5px;color:var(--sub);font-weight:600}
+.ch.l2{padding-left:24px;font-weight:500}
+.row{display:block;padding:6px 14px 6px 22px;cursor:pointer;border-left:3px solid transparent;text-decoration:none;color:var(--ink);font-size:14px;line-height:1.5}
+.row:hover{background:var(--bg)}
+.row.cur{border-left-color:var(--accent);background:var(--accent-weak)}
+.row .n{font-weight:600;margin-right:6px}
+.row .c{color:var(--sub)}
+.row.del{opacity:.45}
+.row .snip{display:block;color:var(--sub);font-size:12.5px;margin-top:2px}
+mark{background:var(--mark);color:inherit;padding:0 1px;border-radius:2px}
+.filters{display:flex;gap:6px;padding:10px 14px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.filters label{font-size:13px;display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:2px 10px;cursor:pointer}
+.hint{padding:12px 14px;color:var(--sub);font-size:13px}
+/* article */
+.crumb{font-size:12.5px;color:var(--sub);margin-bottom:4px}
+h1.at{font-size:22px;margin:0 0 2px;line-height:1.4}
+h1.at .cap{font-weight:500;color:var(--sub);font-size:17px;margin-left:8px}
+.meta{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px;font-size:13px}
+.body{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.body{font-size:calc(15px * var(--fs,1))}
+.body .para{margin:0 0 .6em;text-indent:-1em;padding-left:1em}
+.body .pn{font-weight:700;margin-right:.5em}
+.body .pcap{color:var(--sub);font-size:13px;margin-top:.4em}
+.body .it{margin:.15em 0;padding-left:2.2em;text-indent:-1.6em}
+.body .it.l2{padding-left:3.6em}.body .it.l3{padding-left:5em}.body .it.l4{padding-left:6.4em}.body .it.l5{padding-left:7.8em}
+.body .in{font-weight:600;margin-right:.6em}
+.body a[data-t]{text-decoration:none;border-bottom:1px dotted currentColor;cursor:pointer}
+.body a[data-t^="H"]{color:var(--H)}.body a[data-t^="R"]{color:var(--R)}.body a[data-t^="K"]{color:var(--K)}
+.tw{overflow-x:auto;margin:.5em 0;text-indent:0}
+.tw table{border-collapse:collapse;font-size:13px;min-width:100%}
+.tw td{border:1px solid var(--line);padding:4px 6px;vertical-align:top;text-indent:0}
+.tt{font-weight:600;margin-top:.5em}
+.rem{font-size:13px;color:var(--sub);margin:.4em 0;text-indent:0}
+.ar{font-family:ui-monospace,monospace;font-size:13px;background:var(--bg);padding:6px;border-radius:6px;overflow-x:auto;text-indent:0;white-space:pre-wrap}
+.fig{color:var(--sub);font-size:12px}
+.blk{margin-top:18px}
+.blk h3{font-size:14px;margin:0 0 6px;color:var(--sub);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:3px 9px;font-size:13px;cursor:pointer;text-align:left;line-height:1.45}
+.chip .c{color:var(--sub);margin-left:4px}
+.grp{margin-bottom:10px}
+.grp .gl{font-size:12px;color:var(--sub);margin:4px 0}
+.kj{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:6px;font-size:13.5px;line-height:1.55}
+.kj .no{font-weight:700}
+.kj .base{color:var(--sub);font-size:12.5px}
+.kj a{font-size:12.5px;margin-right:10px}
+.nav2{display:flex;justify-content:space-between;gap:8px;margin-top:20px}
+.note{font-size:12px;color:var(--sub);margin-top:24px;line-height:1.6}
+.empty{color:var(--sub);padding:40px 10px;text-align:center}
+/* sheet */
+#sheet{position:fixed;inset:0;z-index:50;display:none}
+#sheet.on{display:block}
+#sheet .dim{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+#sheet .card{position:absolute;left:0;right:0;bottom:0;max-height:78vh;padding-bottom:env(safe-area-inset-bottom);background:var(--panel);border-radius:16px 16px 0 0;box-shadow:0 -6px 30px rgba(0,0,0,.2);display:flex;flex-direction:column;max-width:860px;margin:0 auto}
+#sheet .sh{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+#sheet .sh .t{flex:1;font-weight:700}
+#sheet .sb{overflow:auto;padding:12px 16px 24px}
+#sheet .sb .body{border:0;padding:0}
+.primary{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
+@media (prefers-color-scheme: dark){.primary{color:#111}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <div class="brand">建築基準法 条文DB<small>法・施行令・施行規則・主要告示</small></div>
+    <div class="search"><input id="q" type="search" placeholder="キーワード／条文番号（令112、法28条の2、第百十二条）" autocomplete="off"></div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button data-tab="toc" class="on">目次</button>
+    <button data-tab="search">検索結果</button>
+    <button data-tab="kokuji">告示索引</button>
+    <button data-tab="hist">履歴</button>
+    <span class="fs"><button id="fsm" aria-label="文字を小さく">A−</button><button id="fsp" aria-label="文字を大きく">A＋</button></span>
+  </div>
+</header>
+<div class="wrap">
+  <aside id="side"><div class="hint">読み込み中…</div></aside>
+  <main id="main"><div class="empty">左の目次・検索から条文を選んでください。</div></main>
+</div>
+<div id="sheet"><div class="dim"></div><div class="card"><div class="sh"><span class="t"></span><button class="primary" id="sgo">この条文へ移動</button><button class="pill" id="sx">閉じる</button></div><div class="sb"></div></div></div>
+<script>
+(async function(){
+const $=s=>document.querySelector(s);
+const side=$('#side'), main=$('#main');
+let D;
+try{ D=await (await fetch('data.json')).json(); }catch(e){ side.innerHTML='<div class="hint">データの読み込みに失敗しました。ページを再読み込みしてください。</div>'; return; }
+const LAW={}; D.laws.forEach(l=>LAW[l.code]=l);
+const A={}, ORDER=[], BACK={}, KJ={};
+D.arts.forEach((a,i)=>{A[a.id]=a;ORDER.push(a.id);a.i=i;
+  a.txt=(a.t+' '+a.c+' '+a.h.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&'));});
+D.arts.forEach(a=>a.r.forEach(t=>{(BACK[t]=BACK[t]||[]).push(a.id)}));
+D.kokuji.forEach((k,i)=>{k.i=i;k.arts.forEach(id=>{(KJ[id]=KJ[id]||[]).push(k)})});
+
+const K2={'〇':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+function num(id){ // "R:112_2" -> 112条の2
+  const n=id.slice(2);
+  if(n.startsWith('別表')) return n;
+  if(n.includes(':')) return n.split(':').join('〜')+'条';
+  const p=n.split('_'); return p[0]+'条'+p.slice(1).map(x=>'の'+x).join('');
+}
+function label(id){return LAW[id[0]].short+num(id)}
+function chip(id){return `<span class="lawchip lc-${id[0]}">${LAW[id[0]].short}</span>`}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function hashOf(id){return id.toLowerCase().replace(/:/g,'-').replace(/_/g,'-').replace('別表一','b1').replace('別表二','b2').replace('別表三','b3').replace('別表四','b4')}
+const H2ID={}; ORDER.forEach(id=>H2ID[hashOf(id)]=id);
+
+/* ---------- side: TOC ---------- */
+let tab='toc', curId=null;
+function renderTOC(){
+  let h='';
+  for(const l of D.laws){
+    h+=`<div class="law-h" data-law="${l.code}"><span>${chip(l.code+':')}${l.name}</span></div><div class="sec">`;
+    let prev=[];
+    D.arts.filter(a=>a.law===l.code).forEach(a=>{
+      a.p.forEach((t,k)=>{ if(prev[k]!==t){ h+=`<div class="ch${k?' l2':''}">${esc(t)}</div>`; prev=prev.slice(0,k);} });
+      prev=a.p.slice();
+      h+=`<a class="row${a.del?' del':''}" data-id="${a.id}"><span class="n">${esc(a.t)}</span><span class="c">${esc(a.c)}</span></a>`;
+    });
+    h+='</div>';
+  }
+  side.innerHTML=h; markCur();
+}
+function markCur(){side.querySelectorAll('.row.cur').forEach(e=>e.classList.remove('cur'));
+  if(!curId) return; const e=side.querySelector(`.row[data-id="${CSS.escape(curId)}"]`); if(e){e.classList.add('cur'); if(tab==='toc') e.scrollIntoView({block:'nearest'});}}
+
+/* ---------- search ---------- */
+let laws={H:1,R:1,K:1};
+function toHalf(s){return s.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/　/g,' ')}
+function k2a(s){ // kanji number to int
+  let t=0,c=0; for(const ch of s){ if(ch in K2)c=K2[ch]; else if(ch==='十'){t+=(c||1)*10;c=0} else if(ch==='百'){t+=(c||1)*100;c=0} else if(ch==='千'){t+=(c||1)*1000;c=0} } return t+c;}
+function numHits(q){
+  q=toHalf(q).replace(/\s/g,'').replace(/第/g,'').replace(/[〇一二三四五六七八九十百千]+/g,m=>k2a(m));
+  const m=q.match(/^(建築基準法施行規則|建築基準法施行令|施行規則|規則|施行令|令|建築基準法|基準法|法)?(\d+)(条)?((?:の\d+)*)(?:\d+項)?(?:\d+号)?$/);
+  if(m && (m[3]||m[1]||!m[4]&&q===m[2]||m[4])){
+    const pre=m[1]; const laws=pre?[/規則/.test(pre)?'K':/令/.test(pre)?'R':'H']:['H','R','K'];
+    return laws.map(l=>l+':'+m[2]+(m[4]?m[4].replace(/の/g,'_'):'')).filter(id=>A[id]);
+  }
+  const b=q.match(/^(法)?別表(\d)$/); if(b){const id='H:別表'+'〇一二三四'[+b[2]]; if(A[id]) return [id];}
+  return [];
+}
+function direct(q){
+  q=toHalf(q).replace(/\s/g,'').replace(/第/g,'');
+  q=q.replace(/[〇一二三四五六七八九十百千]+/g,m=>k2a(m));
+  const m=q.match(/^(施行規則|規則|施行令|令|建築基準法|基準法|法)(\d+)条?((?:の\d+)*)/);
+  if(m){const law={'施行規則':'K','規則':'K','施行令':'R','令':'R'}[m[1]]||'H';
+    const id=law+':'+m[2]+(m[3]?m[3].replace(/の/g,'_'):''); if(A[id]) return id;}
+  const b=q.match(/^(法)?別表(\d)/); if(b){const id='H:別表'+'〇一二三四'[+b[2]]; if(A[id]) return id;}
+  return null;
+}
+/* 漢数字 → 算用数字 正規化（位置対応つき） */
+const KD={'〇':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'零':0};
+function kjNum(seq){
+  if(/[十百千万]/.test(seq)){let tot=0,sec=0,cur=0;
+    for(const ch of seq){ if(ch in KD) cur=KD[ch]; else if(ch==='十'){sec+=(cur||1)*10;cur=0} else if(ch==='百'){sec+=(cur||1)*100;cur=0}
+      else if(ch==='千'){sec+=(cur||1)*1000;cur=0} else if(ch==='万'){tot+=((sec+cur)||1)*10000;sec=0;cur=0} }
+    return String(tot+sec+cur);}
+  return [...seq].map(c=>KD[c]).join('');
+}
+const NUMRE=/[〇零一二三四五六七八九十百千万]+(?:・[〇零一二三四五六七八九]+)?|[0-9]+・[0-9]+|[０-９]+/g;
+function norm(str,withMap){
+  let out='',map=withMap?[]:null,pos=0;
+  str.replace(NUMRE,(m,off)=>{
+    if(withMap) for(let i=pos;i<off;i++) map.push(i);
+    out+=str.slice(pos,off);
+    let r;
+    if(/^[０-９]+$/.test(m)) r=toHalf(m);
+    else { const [a,b]=m.split('・'); r=(/[0-9]/.test(a)?a:kjNum(a))+(b!==undefined?'.'+(/[0-9]/.test(b)?b:kjNum(b)):''); }
+    out+=r; if(withMap) for(let i=0;i<r.length;i++) map.push(i===r.length-1?off+m.length-1:off);
+    pos=off+m.length; return m;});
+  if(withMap) for(let i=pos;i<str.length;i++) map.push(i);
+  out+=str.slice(pos);
+  return withMap?{s:out,map}:out;
+}
+const UNITS=[[/(㎡|m²|m2|平米)/gi,'平方メートル'],[/(㎥|m³|m3)/gi,'立方メートル'],[/(㎝|cm)/gi,'センチメートル'],[/(㎜|mm)/gi,'ミリメートル'],[/(?<=[0-9])m(?![a-z])/gi,'メートル'],[/(?<=[0-9])kn\b/gi,'キロニュートン'],[/(?<=[0-9])(%|％)/g,'パーセント']];
+function qnorm(q){
+  q=toHalf(q).replace(/[Ａ-Ｚａ-ｚ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[．。]/g,m=>m).replace(/(?<=[0-9]),(?=[0-9]{3})/g,'').replace(/(?<=[0-9])[．\.](?=[0-9])/g,'・');
+  UNITS.forEach(([r,t])=>q=q.replace(r,t));
+  q=norm(q);
+  q=q.replace(/(^|[^0-9])(法|令|規則)([0-9]+)(?![0-9条.項号])/g,'$1$2第$3条');
+  q=q.replace(/(^|[^第0-9.])([0-9]+条)/g,'$1第$2').replace(/(条|項|の[0-9]+)([0-9]+)(項|号)/g,'$1第$2$3').replace(/(項)([0-9]+)(号)/g,'$1第$2$3');
+  return q;
+}
+function termRe(t){
+  const e=t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return (/^[0-9]/.test(t)?'(?<![0-9.])':'')+e+(/[0-9]$/.test(t)?'(?![0-9]|\\.[0-9])':'');
+}
+function hilite(orig,terms,from,len){ // highlight in original text using normalized matching
+  const {s:n,map}=norm(orig,true);
+  const re=new RegExp(terms.map(termRe).join('|'),'g'); const marks=[];
+  let m; while((m=re.exec(n))){ if(!m[0].length){re.lastIndex++;continue} marks.push([map[m.index],map[m.index+m[0].length-1]+1]); }
+  let st=from===undefined?0:from, en=len===undefined?orig.length:Math.min(orig.length,st+len);
+  if(from==='auto'){ const f=marks.length?marks[0][0]:0; st=Math.max(0,f-30); en=Math.min(orig.length,st+110); }
+  let h='',p=st;
+  for(const [a,b] of marks){ if(b<=st||a>=en) continue; const A0=Math.max(a,st),B0=Math.min(b,en); if(A0<p) continue; h+=esc(orig.slice(p,A0))+'<mark>'+esc(orig.slice(A0,B0))+'</mark>'; p=B0; }
+  h+=esc(orig.slice(p,en));
+  return (st>0?'…':'')+h+(en<orig.length&&from==='auto'?'…':'');
+}
+function matchAll(ntext,res){ return res.every(r=>r.test(ntext)); }
+function parseQuery(raw){
+  const toks=toHalf(raw).split(/\s+/).filter(Boolean), num=[], kw=[];
+  for(const t of toks){ const ids=numHits(t);
+    if(ids.length && !/^[0-9.]+$/.test(toHalf(t))){ const q=qnorm(t); num.push({ids,q,re:new RegExp(termRe(q))}); }
+    else if(ids.length && toks.length===1){ const q=qnorm(t); num.push({ids,q,re:new RegExp(termRe(q))}); }
+    else kw.push(...qnorm(t).split(/\s+/).filter(Boolean)); }
+  const nh=[...new Set(num.flatMap(n=>n.ids))];
+  return {num,kw,nh,all:[...num.map(n=>n.q),...kw]};
+}
+function renderSearch(){
+  const raw=$('#q').value.trim();
+  let h=`<div class="filters">${D.laws.map(l=>`<label><input type="checkbox" data-f="${l.code}" ${laws[l.code]?'checked':''}>${l.short}</label>`).join('')}</div>`;
+  if(!raw){side.innerHTML=h+'<div class="hint">キーワードをスペース区切りで入力すると AND 検索します（例：「排煙 防煙壁」「階段 けあげ」「採光補正係数」）。主要告示の件名も一緒に検索します。<br>数字は漢数字・算用数字のどちらでも検索できます（例：「500㎡」→「五百平方メートル」、「31m」→「三十一メートル」、「1.5」→「一・五」）。<br>条文番号も漢数字・数字のどちらでも検索できます。「令112」「法28条の2」「規則1の3」「112条」「第百十二条」「法第28条第1項」「別表2」など。法令名を省くと法・令・規則の同じ番号の条文をまとめて表示します。</div>';return;}
+  const P=parseQuery(raw), terms=P.all, res_=terms.map(t=>new RegExp(termRe(t)));
+  const nh=P.nh, nset=new Set(nh), combo=P.num.length && P.kw.length;
+  const kwRes=P.kw.map(t=>new RegExp(termRe(t)));
+  const res=[];
+  for(const a of D.arts){ if(!laws[a.law]) continue;
+    if(!matchAll(a.ntxt,kwRes)) continue;
+    if(P.num.every(n=>n.ids.includes(a.id) || n.re.test(a.ntxt))) res.push(a); }
+  res.sort((x,y)=>{const ox=nset.has(x.id)?0:1, oy=nset.has(y.id)?0:1; if(ox!==oy) return ox-oy;
+    const sx=res_.some(r=>r.test(x.nc))?0:1, sy=res_.some(r=>r.test(y.nc))?0:1; return sx-sy||x.i-y.i;});
+  if(nh.length){
+    h+=`<div class="ch">条文番号で一致（${nh.length}）</div>`+nh.map(d=>{const A_=A[d];
+      const body=A_.h.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+      const hit=!combo||matchAll(A_.ntxt,kwRes);
+      return `<a class="row" data-id="${d}"><span class="n">→ ${chip(d)}${esc(A_.t)}</span><span class="c">${esc(A_.c)}</span>${combo?`<span class="snip">${hit?hilite(body,P.kw,'auto'):'（この条文には「'+esc(P.kw.join(' '))+'」はありません）'}</span>`:''}</a>`}).join('')
+      +`<div class="hint" style="padding-top:4px">Enterで${nh.length===1?'この条文':'先頭の条文'}を開きます</div>`;
+  }
+  const kh=D.kokuji.filter(k=>matchAll(k.n,kwRes)&&P.num.every(n=>n.re.test(k.n)||n.ids.some(id=>k.arts.includes(id))));
+  if(kh.length){h+=`<div class="ch">関連する告示（${kh.length}）</div>`+kh.slice(0,40).map(k=>`<a class="row" data-k="${k.i}"><span class="n"><span class="lawchip lc-X">告示</span>${esc(k.no)}</span><span class="snip" style="color:var(--ink)">${esc(k.title)}</span></a>`).join('');}
+  h+=`<div class="ch">${combo?'条文（番号の条文本体＋その番号を引用している条文）':'条文'}</div>`;
+  h+=`<div class="hint">${res.length}件${res.length>200?'（上位200件を表示）':''}${terms.join(' ')!==toHalf(raw).split(/\s+/).filter(Boolean).join(' ')?`　<span style="font-size:12px">検索語：${esc(terms.join(' '))}</span>`:''}</div>`;
+  res.slice(0,200).forEach(a=>{
+    const body=a.h.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+    const self=nset.has(a.id);
+    const ht=self?(P.kw.length?P.kw:terms):terms;
+    h+=`<a class="row${a.del?' del':''}" data-id="${a.id}"><span class="n">${chip(a.id)}${esc(a.t)}${self?' <span class="lawchip lc-X">番号一致</span>':''}</span><span class="c">${hilite(a.c,ht)}</span><span class="snip">${hilite(body,ht,'auto')}</span></a>`;
+  });
+  side.innerHTML=h; markCur();
+}
+
+/* ---------- kokuji ---------- */
+function renderKokuji(){
+  const terms=qnorm($('#q').value.trim()).split(/\s+/).filter(Boolean); const res_=terms.map(t=>new RegExp(termRe(t)));
+  let h=`<div class="hint">建築基準法関係の告示 ${D.kokuji.length}件の索引です（件名・番号・制定日・最終改正日・根拠条文。本文は収録していません）。上の検索欄で件名・番号・根拠条文から絞り込めます（例：「排煙」「1399」「令112」「平成12年」）。</div>`;
+  let cat='';
+  D.kokuji.filter(k=>matchAll(k.n,res_)).forEach(k=>{
+    if(k.cat!==cat){cat=k.cat;h+=`<div class="ch">${esc(cat)}</div>`;}
+    h+=`<a class="row" data-k="${k.i}"><span class="n">${esc(k.no)}</span><span class="snip" style="color:var(--ink)">${esc(k.title)}</span><span class="snip">${k.base?'根拠：'+esc(k.base):''}${k.last?'　最終改正 '+esc(k.last):''}</span></a>`;
+  });
+  side.innerHTML=h;
+}
+function kokujiCard(k){
+  const g='https://www.google.com/search?q='+encodeURIComponent(k.no+' '+k.title);
+  const dt=k.date?`<div class="base">制定 ${esc(k.date)}${k.last&&k.last!==k.date?`／最終改正 ${esc(k.last)}`:''}</div>`:'';
+  return `<div class="kj"><div class="no">${esc(k.no)}</div><div>${esc(k.title)}</div>${dt}<div class="base">根拠：${k.base?esc(k.base):'（未登録）'}</div>
+  <div>${k.url?`<a href="${k.url}" target="_blank" rel="noopener">国交省PDF</a>`:''}<a href="${g}" target="_blank" rel="noopener">告示本文を検索</a></div>
+  ${k.arts.length?`<div class="chips" style="margin-top:6px">${k.arts.map(id=>`<button class="chip" data-id="${id}">${chip(id)}${num(id)}<span class="c">${esc(A[id].c)}</span></button>`).join('')}</div>`:''}</div>`;
+}
+function showKokuji(i){
+  const k=D.kokuji[i]; curId=null;
+  main.innerHTML=`<div class="backbar"><button class="pill" data-back>← 一覧へ</button></div><div class="crumb">告示索引 › ${esc(k.cat)}</div>${kokujiCard(k)}
+  <p class="note">告示は e-Gov に収録されていないため、件名・番号・制定日・最終改正日・根拠条文の索引のみを収録しています（告示一覧は令和8年11月18日公布分まで）。根拠条文は件名中の条文番号と主要告示の対応表から付けたもので、未登録のものもあります。本文は国交省の告示データベースや法令集で最新版を確認してください。</p>`;
+  document.body.classList.add('reading'); window.scrollTo(0,0);
+}
+
+/* ---------- history ---------- */
+let HIST=[]; try{HIST=JSON.parse(localStorage.getItem('kbh-hist')||'[]').filter(id=>A[id])}catch(e){}
+function renderHist(){
+  side.innerHTML=HIST.length?HIST.map(id=>`<a class="row" data-id="${id}"><span class="n">${chip(id)}${esc(A[id].t)}</span><span class="c">${esc(A[id].c)}</span></a>`).join(''):'<div class="hint">最近開いた条文がここに表示されます。</div>';
+  markCur();
+}
+
+/* ---------- article ---------- */
+function show(id,push=true){
+  const a=A[id]; if(!a) return; curId=id;
+  HIST=[id,...HIST.filter(x=>x!==id)].slice(0,40); try{localStorage.setItem('kbh-hist',JSON.stringify(HIST))}catch(e){}
+  const l=LAW[a.law];
+  const out=a.r.filter(t=>A[t]);
+  const back=(BACK[id]||[]);
+  const grp=(ids)=>['H','R','K'].map(c=>{const xs=ids.filter(x=>x[0]===c); if(!xs.length) return '';
+    return `<div class="grp"><div class="gl">${LAW[c].name}（${xs.length}）</div><div class="chips">${xs.map(x=>`<button class="chip" data-id="${x}">${num(x)}<span class="c">${esc(A[x].c)}</span></button>`).join('')}</div></div>`}).join('');
+  const kj=KJ[id]||[];
+  const prev=ORDER[a.i-1], next=ORDER[a.i+1];
+  main.innerHTML=`
+  <div class="backbar"><button class="pill" data-back>← 一覧へ</button></div>
+  <div class="crumb">${chip(id)}${esc(l.name)}${a.p.length?' › '+a.p.map(esc).join(' › '):''}</div>
+  <h1 class="at">${esc(a.t)}<span class="cap">${esc(a.c)}</span></h1>
+  <div class="meta"><a href="${l.url}" target="_blank" rel="noopener">e-Govで見る</a><span style="color:var(--sub)">引用 ${out.length}／被引用 ${back.length}${kj.length?'／関連告示 '+kj.length:''}</span></div>
+  <div class="body">${a.h||'<span style="color:var(--sub)">（本文なし）</span>'}</div>
+  ${kj.length?`<div class="blk"><h3>関連する主要告示</h3>${kj.map(kokujiCard).join('')}</div>`:''}
+  ${back.length?`<div class="blk"><h3>この条文を引用している条文</h3>${grp(back)}</div>`:''}
+  ${out.length?`<div class="blk"><h3>この条文が引用している条文</h3>${grp(out)}</div>`:''}
+  <div class="nav2">${prev&&prev[0]===id[0]?`<button class="pill" data-id="${prev}">← ${num(prev)}</button>`:'<span></span>'}${next&&next[0]===id[0]?`<button class="pill" data-id="${next}">${num(next)} →</button>`:''}</div>
+  <p class="note">条文中の色付きリンクをタップすると引用先をその場で確認できます（<span style="color:var(--H)">法</span>／<span style="color:var(--R)">令</span>／<span style="color:var(--K)">規則</span>）。リンクは条単位で、項・号までは絞り込みません。他の法律（都市計画法など）の条文はリンクしていません。</p>`;
+  document.body.classList.add('reading');
+  window.scrollTo(0,0); markCur();
+  if(push) setHash(hashOf(id));
+}
+
+function setHash(h){
+  try{ if(location.hash==='#'+h) return; }catch(e){ return; }
+  try{ history.pushState(null,'','#'+h); return; }catch(e){}
+  try{ history.replaceState(null,'','#'+h); return; }catch(e){}
+  /* 履歴を書き換えられない環境（チャット内プレビュー等）では何もしない */
+}
+/* ---------- preview sheet ---------- */
+let sheetId=null;
+function preview(id){
+  const a=A[id]; if(!a) return; sheetId=id;
+  $('#sheet .t').innerHTML=chip(id)+esc(a.t)+' <span style="font-weight:400;color:var(--sub)">'+esc(a.c)+'</span>';
+  $('#sheet .sb').innerHTML=`<div class="body">${a.h}</div>`;
+  $('#sheet').classList.add('on'); $('#sheet .sb').scrollTop=0;
+}
+function closeSheet(){$('#sheet').classList.remove('on')}
+$('#sheet .dim').onclick=closeSheet; $('#sx').onclick=closeSheet;
+$('#sgo').onclick=()=>{closeSheet(); show(sheetId)};
+$('#sheet .sb').addEventListener('click',e=>{const t=e.target.closest('a[data-t]'); if(t){e.preventDefault(); preview(t.dataset.t)}});
+
+/* ---------- events ---------- */
+function setTab(t){tab=t; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  ({toc:renderTOC,search:renderSearch,kokuji:renderKokuji,hist:renderHist})[t]();
+  document.body.classList.remove('reading'); side.scrollTop=0; if(t==='toc') markCur();}
+$('#tabs').onclick=e=>{const b=e.target.closest('button'); if(b) setTab(b.dataset.tab)};
+let tmr; $('#q').addEventListener('input',()=>{clearTimeout(tmr); tmr=setTimeout(()=>{ if(tab!=='kokuji') tab='search'; setTab(tab)},200)});
+$('#q').addEventListener('keydown',e=>{ if(e.key==='Enter'){const nh=parseQuery($('#q').value).nh; if(nh.length){show(nh[0]); $('#q').blur();}}});
+side.addEventListener('change',e=>{const f=e.target.dataset.f; if(f){laws[f]=e.target.checked?1:0; renderSearch();}});
+document.addEventListener('click',e=>{
+  if(e.target.closest('#sheet')) return;
+  const t=e.target.closest('a[data-t]'); if(t){e.preventDefault(); preview(t.dataset.t); return;}
+  const r=e.target.closest('[data-id]'); if(r){e.preventDefault(); show(r.dataset.id); return;}
+  const k=e.target.closest('[data-k]'); if(k){e.preventDefault(); showKokuji(+k.dataset.k); return;}
+  if(e.target.closest('[data-back]')){document.body.classList.remove('reading'); markCur();}
+});
+function route(){let h=''; try{h=location.hash.slice(1)}catch(e){} if(H2ID[h]) show(H2ID[h],false); else {document.body.classList.remove('reading')}}
+window.addEventListener('hashchange',route); window.addEventListener('popstate',route);
+D.arts.forEach(a=>{a.ntxt=norm(a.txt);a.nc=norm(a.c)});
+D.kokuji.forEach(k=>{k.n=norm(k.no+' '+k.title+' '+k.base+' '+k.cat+' '+(k.date||'')+' '+k.arts.map(id=>LAW[id[0]].short+'第'+num(id)).join(' '))});
+let fs=1; try{fs=+localStorage.getItem('kbh-fs')||1}catch(e){}
+function setFs(v){fs=Math.min(1.6,Math.max(.85,v)); document.documentElement.style.setProperty('--fs',fs); try{localStorage.setItem('kbh-fs',fs)}catch(e){}}
+setFs(fs); $('#fsm').onclick=e=>{e.stopPropagation();setFs(fs-.1)}; $('#fsp').onclick=e=>{e.stopPropagation();setFs(fs+.1)};
+function hh(){document.documentElement.style.setProperty('--hh',document.querySelector('header').offsetHeight+'px')}
+hh(); window.addEventListener('resize',hh);
+renderTOC(); route();
+})();
+</script>
+<script>if('serviceWorker' in navigator && location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').catch(()=>{})}</script>
+</body>
+</html>
