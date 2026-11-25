@@ -9,8 +9,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="建基法DB">
-<title>建築基準法 条文データベース</title>
+<meta name="apple-mobile-web-app-title" content="法令条文DB">
+<title>建築基準法・消防法 条文データベース</title>
 <style>
 :root{
   --bg:#f6f5f1; --panel:#ffffff; --ink:#1d1d1b; --sub:#6b6a64; --line:#e2e0d8;
@@ -29,6 +29,8 @@ html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
 body{font-size:calc(15px * var(--fs,1))}
 #main,#side{padding-bottom:env(safe-area-inset-bottom)}
 .fs{display:flex;gap:4px;margin-left:auto}.tabs .fs button{border:1px solid var(--line);background:var(--panel);border-radius:8px;min-width:34px;height:30px;cursor:pointer;font-size:13px}
+.tabs .fs #numt{min-width:auto;padding:0 9px;font-weight:600}
+.tabs .fs button.on{background:var(--accent-weak);color:var(--accent);border-color:var(--accent)}
 .hrow{display:flex;align-items:center;gap:10px;padding:10px 14px 6px}
 .brand{font-weight:700;font-size:15px;white-space:nowrap}
 .brand small{display:block;font-weight:400;color:var(--sub);font-size:11px;line-height:1.3}
@@ -56,6 +58,10 @@ body{font-size:calc(15px * var(--fs,1))}
 .pill{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 12px;cursor:pointer;font-size:13px}
 .lawchip{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:0 5px;margin-right:6px;color:#fff;vertical-align:1px}
 .lc-H{background:var(--H)}.lc-R{background:var(--R)}.lc-K{background:var(--K)}.lc-X{background:var(--X)}
+.lc-F{background:var(--H)}.lc-G{background:var(--R)}.lc-M{background:var(--K)}
+.setsw{display:flex;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:2px;flex:none}
+.setsw button{border:0;background:none;padding:7px 11px;border-radius:8px;color:var(--sub);cursor:pointer;font-size:13.5px;font-weight:600;white-space:nowrap}
+.setsw button.on{background:var(--panel);color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.1)}
 /* side lists */
 .sec{padding:8px 0}
 .law-h{position:sticky;top:0;background:var(--panel);padding:8px 14px;font-weight:700;border-bottom:1px solid var(--line);cursor:pointer;display:flex;justify-content:space-between;z-index:1}
@@ -87,6 +93,7 @@ h1.at .cap{font-weight:500;color:var(--sub);font-size:17px;margin-left:8px}
 .body .in{font-weight:600;margin-right:.6em}
 .body a[data-t]{text-decoration:none;border-bottom:1px dotted currentColor;cursor:pointer}
 .body a[data-t^="H"]{color:var(--H)}.body a[data-t^="R"]{color:var(--R)}.body a[data-t^="K"]{color:var(--K)}
+.body a[data-t^="F"]{color:var(--H)}.body a[data-t^="G"]{color:var(--R)}.body a[data-t^="M"]{color:var(--K)}
 .tw{overflow-x:auto;margin:.5em 0;text-indent:0}
 .tw table{border-collapse:collapse;font-size:13px;min-width:100%}
 .tw td{border:1px solid var(--line);padding:4px 6px;vertical-align:top;text-indent:0}
@@ -124,15 +131,15 @@ h1.at .cap{font-weight:500;color:var(--sub);font-size:17px;margin-left:8px}
 <body>
 <header>
   <div class="hrow">
-    <div class="brand">建築基準法 条文DB<small>法・施行令・施行規則・主要告示</small></div>
+    <div class="setsw" id="setsw"></div>
     <div class="search"><input id="q" type="search" placeholder="キーワード／条文番号（令112、法28条の2、第百十二条）" autocomplete="off"></div>
   </div>
   <div class="tabs" id="tabs">
     <button data-tab="toc" class="on">目次</button>
     <button data-tab="search">検索結果</button>
-    <button data-tab="kokuji">告示索引</button>
+    <button data-tab="kokuji" id="kokujitab">告示索引</button>
     <button data-tab="hist">履歴</button>
-    <span class="fs"><button id="fsm" aria-label="文字を小さく">A−</button><button id="fsp" aria-label="文字を大きく">A＋</button></span>
+    <span class="fs"><button id="numt" aria-label="漢数字と算用数字の切り替え" title="漢数字⇄算用数字">一→1</button><button id="fsm" aria-label="文字を小さく">A−</button><button id="fsp" aria-label="文字を大きく">A＋</button></span>
   </div>
 </header>
 <div class="wrap">
@@ -144,36 +151,30 @@ h1.at .cap{font-weight:500;color:var(--sub);font-size:17px;margin-left:8px}
 (async function(){
 const $=s=>document.querySelector(s);
 const side=$('#side'), main=$('#main');
-let D;
+let D, SETS=[], SI=0, SET=null, LAW={}, A={}, ORDER=[], BACK={}, KJ={}, CODES=[], H2ID={};
 try{ D=await (await fetch('data.json')).json(); }catch(e){ side.innerHTML='<div class="hint">データの読み込みに失敗しました。ページを再読み込みしてください。</div>'; return; }
-const LAW={}; D.laws.forEach(l=>LAW[l.code]=l);
-const A={}, ORDER=[], BACK={}, KJ={};
-D.arts.forEach((a,i)=>{A[a.id]=a;ORDER.push(a.id);a.i=i;
-  a.txt=(a.t+' '+a.c+' '+a.h.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&'));});
-D.arts.forEach(a=>a.r.forEach(t=>{(BACK[t]=BACK[t]||[]).push(a.id)}));
-D.kokuji.forEach((k,i)=>{k.i=i;k.arts.forEach(id=>{(KJ[id]=KJ[id]||[]).push(k)})});
+SETS = D.sets || [{key:'k',label:'法令',short:'法令',laws:D.laws,arts:D.arts,kokuji:D.kokuji||[]}];
 
 const K2={'〇':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
 function num(id){ // "R:112_2" -> 112条の2
   const n=id.slice(2);
-  if(n.startsWith('別表')) return n;
+  if(n.startsWith('別表')){ const r=n.slice(2); return /^[0-9]/.test(r)?'別表第'+r.replace(/_/g,'の'):'別表'+r; }
   if(n.includes(':')) return n.split(':').join('〜')+'条';
   const p=n.split('_'); return p[0]+'条'+p.slice(1).map(x=>'の'+x).join('');
 }
 function label(id){return LAW[id[0]].short+num(id)}
 function chip(id){return `<span class="lawchip lc-${id[0]}">${LAW[id[0]].short}</span>`}
 function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-function hashOf(id){return id.toLowerCase().replace(/:/g,'-').replace(/_/g,'-').replace('別表一','b1').replace('別表二','b2').replace('別表三','b3').replace('別表四','b4')}
-const H2ID={}; ORDER.forEach(id=>H2ID[hashOf(id)]=id);
+function hashOf(id){ return id.toLowerCase().replace(/:/g,'-').replace(/別表([0-9〇一二三四五六七八九十]+)/,(m,n)=>'b'+(/[0-9]/.test(n)?n:k2a(n))).replace(/_/g,'-'); }
 
 /* ---------- side: TOC ---------- */
-let tab='toc', curId=null;
+let tab='toc', curId=null, curKj=null;
 function renderTOC(){
   let h='';
-  for(const l of D.laws){
+  for(const l of SET.laws){
     h+=`<div class="law-h" data-law="${l.code}"><span>${chip(l.code+':')}${l.name}</span></div><div class="sec">`;
     let prev=[];
-    D.arts.filter(a=>a.law===l.code).forEach(a=>{
+    SET.arts.filter(a=>a.law===l.code).forEach(a=>{
       a.p.forEach((t,k)=>{ if(prev[k]!==t){ h+=`<div class="ch${k?' l2':''}">${esc(t)}</div>`; prev=prev.slice(0,k);} });
       prev=a.p.slice();
       h+=`<a class="row${a.del?' del':''}" data-id="${a.id}"><span class="n">${esc(a.t)}</span><span class="c">${esc(a.c)}</span></a>`;
@@ -186,18 +187,21 @@ function markCur(){side.querySelectorAll('.row.cur').forEach(e=>e.classList.remo
   if(!curId) return; const e=side.querySelector(`.row[data-id="${CSS.escape(curId)}"]`); if(e){e.classList.add('cur'); if(tab==='toc') e.scrollIntoView({block:'nearest'});}}
 
 /* ---------- search ---------- */
-let laws={H:1,R:1,K:1};
+let laws={};
 function toHalf(s){return s.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/　/g,' ')}
 function k2a(s){ // kanji number to int
   let t=0,c=0; for(const ch of s){ if(ch in K2)c=K2[ch]; else if(ch==='十'){t+=(c||1)*10;c=0} else if(ch==='百'){t+=(c||1)*100;c=0} else if(ch==='千'){t+=(c||1)*1000;c=0} } return t+c;}
+function preCode(pre){ return /規則/.test(pre)?CODES[2]:/令/.test(pre)?CODES[1]:CODES[0]; }
+function tableIds(n){ let r=[]; for(const c of CODES){ for(const key of ['別表'+n,'別表'+'〇一二三四五六七八九十'[n]]){ if(A[c+':'+key]) r.push(c+':'+key); } } return r; }
 function numHits(q){
   q=toHalf(q).replace(/\s/g,'').replace(/第/g,'').replace(/[〇一二三四五六七八九十百千]+/g,m=>k2a(m));
-  const m=q.match(/^(建築基準法施行規則|建築基準法施行令|施行規則|規則|施行令|令|建築基準法|基準法|法)?(\d+)(条)?((?:の\d+)*)(?:\d+項)?(?:\d+号)?$/);
+  const bt=q.match(/^(消防法施行規則|消防法施行令|消防法|建築基準法施行規則|建築基準法施行令|建築基準法|施行規則|規則|施行令|令|法)?別表(\d+)$/);
+  if(bt){ const ids=tableIds(bt[2]); return bt[1]?ids.filter(id=>id[0]===preCode(bt[1])):ids; }
+  const m=q.match(/^(消防法施行規則|消防法施行令|消防法|建築基準法施行規則|建築基準法施行令|建築基準法|施行規則|規則|施行令|令|基準法|法)?(\d+)(条)?((?:の\d+)*)(?:\d+項)?(?:\d+号)?$/);
   if(m && (m[3]||m[1]||!m[4]&&q===m[2]||m[4])){
-    const pre=m[1]; const laws=pre?[/規則/.test(pre)?'K':/令/.test(pre)?'R':'H']:['H','R','K'];
-    return laws.map(l=>l+':'+m[2]+(m[4]?m[4].replace(/の/g,'_'):'')).filter(id=>A[id]);
+    const pre=m[1]; const cs=pre?[preCode(pre)]:CODES;
+    return cs.map(l=>l+':'+m[2]+(m[4]?m[4].replace(/の/g,'_'):'')).filter(id=>A[id]);
   }
-  const b=q.match(/^(法)?別表(\d)$/); if(b){const id='H:別表'+'〇一二三四'[+b[2]]; if(A[id]) return [id];}
   return [];
 }
 function direct(q){
@@ -269,13 +273,13 @@ function parseQuery(raw){
 }
 function renderSearch(){
   const raw=$('#q').value.trim();
-  let h=`<div class="filters">${D.laws.map(l=>`<label><input type="checkbox" data-f="${l.code}" ${laws[l.code]?'checked':''}>${l.short}</label>`).join('')}</div>`;
+  let h=`<div class="filters">${SET.laws.map(l=>`<label><input type="checkbox" data-f="${l.code}" ${laws[l.code]?'checked':''}>${l.short}</label>`).join('')}</div>`;
   if(!raw){side.innerHTML=h+'<div class="hint">キーワードをスペース区切りで入力すると AND 検索します（例：「排煙 防煙壁」「階段 けあげ」「採光補正係数」）。主要告示の件名も一緒に検索します。<br>数字は漢数字・算用数字のどちらでも検索できます（例：「500㎡」→「五百平方メートル」、「31m」→「三十一メートル」、「1.5」→「一・五」）。<br>条文番号も漢数字・数字のどちらでも検索できます。「令112」「法28条の2」「規則1の3」「112条」「第百十二条」「法第28条第1項」「別表2」など。法令名を省くと法・令・規則の同じ番号の条文をまとめて表示します。</div>';return;}
   const P=parseQuery(raw), terms=P.all, res_=terms.map(t=>new RegExp(termRe(t)));
   const nh=P.nh, nset=new Set(nh), combo=P.num.length && P.kw.length;
   const kwRes=P.kw.map(t=>new RegExp(termRe(t)));
   const res=[];
-  for(const a of D.arts){ if(!laws[a.law]) continue;
+  for(const a of SET.arts){ if(!laws[a.law]) continue;
     if(!matchAll(a.ntxt,kwRes)) continue;
     if(P.num.every(n=>n.ids.includes(a.id) || n.re.test(a.ntxt))) res.push(a); }
   res.sort((x,y)=>{const ox=nset.has(x.id)?0:1, oy=nset.has(y.id)?0:1; if(ox!==oy) return ox-oy;
@@ -287,7 +291,7 @@ function renderSearch(){
       return `<a class="row" data-id="${d}"><span class="n">→ ${chip(d)}${esc(A_.t)}</span><span class="c">${esc(A_.c)}</span>${combo?`<span class="snip">${hit?hilite(body,P.kw,'auto'):'（この条文には「'+esc(P.kw.join(' '))+'」はありません）'}</span>`:''}</a>`}).join('')
       +`<div class="hint" style="padding-top:4px">Enterで${nh.length===1?'この条文':'先頭の条文'}を開きます</div>`;
   }
-  const kh=D.kokuji.filter(k=>matchAll(k.n,kwRes)&&P.num.every(n=>n.re.test(k.n)||n.ids.some(id=>k.arts.includes(id))));
+  const kh=SET.kokuji.filter(k=>matchAll(k.n,kwRes)&&P.num.every(n=>n.re.test(k.n)||n.ids.some(id=>k.arts.includes(id))));
   if(kh.length){h+=`<div class="ch">関連する告示（${kh.length}）</div>`+kh.slice(0,40).map(k=>`<a class="row" data-k="${k.i}"><span class="n"><span class="lawchip lc-X">告示</span>${esc(k.no)}</span><span class="snip" style="color:var(--ink)">${esc(k.title)}</span></a>`).join('');}
   h+=`<div class="ch">${combo?'条文（番号の条文本体＋その番号を引用している条文）':'条文'}</div>`;
   h+=`<div class="hint">${res.length}件${res.length>200?'（上位200件を表示）':''}${terms.join(' ')!==toHalf(raw).split(/\s+/).filter(Boolean).join(' ')?`　<span style="font-size:12px">検索語：${esc(terms.join(' '))}</span>`:''}</div>`;
@@ -303,13 +307,32 @@ function renderSearch(){
 /* ---------- kokuji ---------- */
 function renderKokuji(){
   const terms=qnorm($('#q').value.trim()).split(/\s+/).filter(Boolean); const res_=terms.map(t=>new RegExp(termRe(t)));
-  let h=`<div class="hint">建築基準法関係の告示 ${D.kokuji.length}件の索引です（件名・番号・制定日・最終改正日・根拠条文。本文は収録していません）。上の検索欄で件名・番号・根拠条文から絞り込めます（例：「排煙」「1399」「令112」「平成12年」）。</div>`;
+  let h=`<div class="hint">建築基準法関係の告示 ${SET.kokuji.length}件の索引です（件名・番号・制定日・最終改正日・根拠条文。本文は収録していません）。上の検索欄で件名・番号・根拠条文から絞り込めます（例：「排煙」「1399」「令112」「平成12年」）。</div>`;
   let cat='';
-  D.kokuji.filter(k=>matchAll(k.n,res_)).forEach(k=>{
+  SET.kokuji.filter(k=>matchAll(k.n,res_)).forEach(k=>{
     if(k.cat!==cat){cat=k.cat;h+=`<div class="ch">${esc(cat)}</div>`;}
     h+=`<a class="row" data-k="${k.i}"><span class="n">${esc(k.no)}</span><span class="snip" style="color:var(--ink)">${esc(k.title)}</span><span class="snip">${k.base?'根拠：'+esc(k.base):''}${k.last?'　最終改正 '+esc(k.last):''}</span></a>`;
   });
   side.innerHTML=h;
+}
+/* 算用数字表示（番号・寸法・割合のみ変換） */
+function convText(s){
+  if(/^\s*[〇零一二三四五六七八九十百千]+\s*$/.test(s)) return s.replace(/[〇零一二三四五六七八九十百千]+/,m=>kjNum(m));
+  s=s.replace(/([〇零一二三四五六七八九十百千]+)分の([〇零一二三四五六七八九十百千]+)/g,(m,a,b)=>kjNum(a)+'分の'+kjNum(b));
+  s=s.replace(/第([〇零一二三四五六七八九十百千]+)(条|項|号|種|類|級|章|節|款|目|欄)/g,(m,n,u)=>'第'+kjNum(n)+u);
+  s=s.replace(/条の([〇零一二三四五六七八九十百千]+)の([〇零一二三四五六七八九十百千]+)/g,(m,a,b)=>'条の'+kjNum(a)+'の'+kjNum(b));
+  s=s.replace(/条の([〇零一二三四五六七八九十百千]+)/g,(m,a)=>'条の'+kjNum(a));
+  s=s.replace(/別表第([〇零一二三四五六七八九十百千]+)/g,(m,n)=>'別表第'+kjNum(n));
+  var U='(平方メートル|立方メートル|センチメートル|ミリメートル|キロメートル|メートル|キログラム|グラム|トン|キロニュートン|ニュートン|パスカル|ルクス|デシベル|ボルト|アンペア|ワット|パーセント|％|度|時間|分間|日間|週間|箇月|か月|年間|階|人|棟|戸(?!建)|室|本|枚|倍|以上|以下|未満)';
+  s=s.replace(new RegExp('([〇零一二三四五六七八九十百千]+)'+U,'g'),(m,n,u)=>kjNum(n)+u);
+  s=s.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  return s;
+}
+function applyNum(root){
+  if(!numMode||!root) return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null); const ns=[]; let n;
+  while(n=w.nextNode()) ns.push(n);
+  ns.forEach(t=>{ const v=convText(t.nodeValue); if(v!==t.nodeValue) t.nodeValue=v; });
 }
 function kokujiCard(k){
   const g='https://www.google.com/search?q='+encodeURIComponent(k.no+' '+k.title);
@@ -319,10 +342,10 @@ function kokujiCard(k){
   ${k.arts.length?`<div class="chips" style="margin-top:6px">${k.arts.map(id=>`<button class="chip" data-id="${id}">${chip(id)}${num(id)}<span class="c">${esc(A[id].c)}</span></button>`).join('')}</div>`:''}</div>`;
 }
 function showKokuji(i){
-  const k=D.kokuji[i]; curId=null;
+  const k=SET.kokuji[i]; curId=null; curKj=i;
   main.innerHTML=`<div class="backbar"><button class="pill" data-back>← 一覧へ</button></div><div class="crumb">告示索引 › ${esc(k.cat)}</div>${kokujiCard(k)}
   <p class="note">告示は e-Gov に収録されていないため、件名・番号・制定日・最終改正日・根拠条文の索引のみを収録しています（告示一覧は令和8年11月18日公布分まで）。根拠条文は件名中の条文番号と主要告示の対応表から付けたもので、未登録のものもあります。本文は国交省の告示データベースや法令集で最新版を確認してください。</p>`;
-  document.body.classList.add('reading'); window.scrollTo(0,0);
+  applyNum(main); document.body.classList.add('reading'); window.scrollTo(0,0);
 }
 
 /* ---------- history ---------- */
@@ -334,12 +357,12 @@ function renderHist(){
 
 /* ---------- article ---------- */
 function show(id,push=true){
-  const a=A[id]; if(!a) return; curId=id;
+  const a=A[id]; if(!a) return; curId=id; curKj=null;
   HIST=[id,...HIST.filter(x=>x!==id)].slice(0,40); try{localStorage.setItem('kbh-hist',JSON.stringify(HIST))}catch(e){}
   const l=LAW[a.law];
   const out=a.r.filter(t=>A[t]);
   const back=(BACK[id]||[]);
-  const grp=(ids)=>['H','R','K'].map(c=>{const xs=ids.filter(x=>x[0]===c); if(!xs.length) return '';
+  const grp=(ids)=>CODES.map(c=>{const xs=ids.filter(x=>x[0]===c); if(!xs.length) return '';
     return `<div class="grp"><div class="gl">${LAW[c].name}（${xs.length}）</div><div class="chips">${xs.map(x=>`<button class="chip" data-id="${x}">${num(x)}<span class="c">${esc(A[x].c)}</span></button>`).join('')}</div></div>`}).join('');
   const kj=KJ[id]||[];
   const prev=ORDER[a.i-1], next=ORDER[a.i+1];
@@ -353,7 +376,8 @@ function show(id,push=true){
   ${back.length?`<div class="blk"><h3>この条文を引用している条文</h3>${grp(back)}</div>`:''}
   ${out.length?`<div class="blk"><h3>この条文が引用している条文</h3>${grp(out)}</div>`:''}
   <div class="nav2">${prev&&prev[0]===id[0]?`<button class="pill" data-id="${prev}">← ${num(prev)}</button>`:'<span></span>'}${next&&next[0]===id[0]?`<button class="pill" data-id="${next}">${num(next)} →</button>`:''}</div>
-  <p class="note">条文中の色付きリンクをタップすると引用先をその場で確認できます（<span style="color:var(--H)">法</span>／<span style="color:var(--R)">令</span>／<span style="color:var(--K)">規則</span>）。リンクは条単位で、項・号までは絞り込みません。他の法律（都市計画法など）の条文はリンクしていません。</p>`;
+  <p class="note">条文中の色付きリンクをタップすると引用先をその場で確認できます（<span style="color:var(--H)">法</span>／<span style="color:var(--R)">令</span>／<span style="color:var(--K)">規則</span>）。リンクは条単位で、項・号までは絞り込みません。他の法律（都市計画法など）の条文はリンクしていません。右上の「一→1」で、番号・寸法・割合の漢数字を算用数字に切り替えられます（「一定」などの語は変換しません）。</p>`;
+  applyNum(main);
   document.body.classList.add('reading');
   window.scrollTo(0,0); markCur();
   if(push) setHash(hashOf(id));
@@ -371,6 +395,7 @@ function preview(id){
   const a=A[id]; if(!a) return; sheetId=id;
   $('#sheet .t').innerHTML=chip(id)+esc(a.t)+' <span style="font-weight:400;color:var(--sub)">'+esc(a.c)+'</span>';
   $('#sheet .sb').innerHTML=`<div class="body">${a.h}</div>`;
+  applyNum($('#sheet .sb'));
   $('#sheet').classList.add('on'); $('#sheet .sb').scrollTop=0;
 }
 function closeSheet(){$('#sheet').classList.remove('on')}
@@ -381,11 +406,11 @@ $('#sheet .sb').addEventListener('click',e=>{const t=e.target.closest('a[data-t]
 /* ---------- events ---------- */
 function setTab(t){tab=t; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   ({toc:renderTOC,search:renderSearch,kokuji:renderKokuji,hist:renderHist})[t]();
-  document.body.classList.remove('reading'); side.scrollTop=0; if(t==='toc') markCur();}
+  document.body.classList.remove('reading'); side.scrollTop=0; applyNum(side); if(t==='toc') markCur();}
 $('#tabs').onclick=e=>{const b=e.target.closest('button'); if(b) setTab(b.dataset.tab)};
 let tmr; $('#q').addEventListener('input',()=>{clearTimeout(tmr); tmr=setTimeout(()=>{ if(tab!=='kokuji') tab='search'; setTab(tab)},200)});
 $('#q').addEventListener('keydown',e=>{ if(e.key==='Enter'){const nh=parseQuery($('#q').value).nh; if(nh.length){show(nh[0]); $('#q').blur();}}});
-side.addEventListener('change',e=>{const f=e.target.dataset.f; if(f){laws[f]=e.target.checked?1:0; renderSearch();}});
+side.addEventListener('change',e=>{const f=e.target.dataset.f; if(f){laws[f]=e.target.checked?1:0; renderSearch(); applyNum(side);}});
 document.addEventListener('click',e=>{
   if(e.target.closest('#sheet')) return;
   const t=e.target.closest('a[data-t]'); if(t){e.preventDefault(); preview(t.dataset.t); return;}
@@ -395,14 +420,40 @@ document.addEventListener('click',e=>{
 });
 function route(){let h=''; try{h=location.hash.slice(1)}catch(e){} if(H2ID[h]) show(H2ID[h],false); else {document.body.classList.remove('reading')}}
 window.addEventListener('hashchange',route); window.addEventListener('popstate',route);
-D.arts.forEach(a=>{a.ntxt=norm(a.txt);a.nc=norm(a.c)});
-D.kokuji.forEach(k=>{k.n=norm(k.no+' '+k.title+' '+k.base+' '+k.cat+' '+(k.date||'')+' '+k.arts.map(id=>LAW[id[0]].short+'第'+num(id)).join(' '))});
+function loadSet(i){
+  SI=i; SET=SETS[i];
+  LAW={}; SET.laws.forEach(l=>LAW[l.code]=l); CODES=SET.laws.map(l=>l.code);
+  A={}; ORDER=[]; BACK={}; KJ={};
+  SET.arts.forEach((a,idx)=>{A[a.id]=a;ORDER.push(a.id);a.i=idx;
+    if(a.txt===undefined) a.txt=(a.t+' '+a.c+' '+a.h.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&'));
+    a.ntxt=norm(a.txt); a.nc=norm(a.c);});
+  SET.arts.forEach(a=>a.r.forEach(t=>{(BACK[t]=BACK[t]||[]).push(a.id)}));
+  (SET.kokuji||[]).forEach((k,idx)=>{k.i=idx;k.arts.forEach(id=>{(KJ[id]=KJ[id]||[]).push(k)});
+    k.n=norm(k.no+' '+k.title+' '+k.base+' '+k.cat+' '+(k.date||'')+' '+k.arts.map(id=>LAW[id[0]].short+'第'+num(id)).join(' '))});
+  H2ID={}; ORDER.forEach(id=>H2ID[hashOf(id)]=id);
+  laws={}; CODES.forEach(c=>laws[c]=1);
+}
 let fs=1; try{fs=+localStorage.getItem('kbh-fs')||1}catch(e){}
 function setFs(v){fs=Math.min(1.6,Math.max(.85,v)); document.documentElement.style.setProperty('--fs',fs); try{localStorage.setItem('kbh-fs',fs)}catch(e){}}
 setFs(fs); $('#fsm').onclick=e=>{e.stopPropagation();setFs(fs-.1)}; $('#fsp').onclick=e=>{e.stopPropagation();setFs(fs+.1)};
 function hh(){document.documentElement.style.setProperty('--hh',document.querySelector('header').offsetHeight+'px')}
 hh(); window.addEventListener('resize',hh);
-renderTOC(); route();
+let numMode=0; try{numMode=localStorage.getItem('kbh-num')==='1'?1:0}catch(e){}
+function reRender(){
+  if(document.body.classList.contains('reading')){ if(curId) show(curId,false); else if(curKj!=null) showKokuji(curKj); }
+  else setTab(tab);
+  if($('#sheet').classList.contains('on')&&sheetId) preview(sheetId);
+}
+function setNum(v){numMode=v?1:0; try{localStorage.setItem('kbh-num',numMode)}catch(e){}; const b=$('#numt'); if(b) b.classList.toggle('on',!!numMode); reRender();}
+if(numMode) $('#numt').classList.add('on');
+$('#numt').onclick=e=>{e.stopPropagation(); setNum(!numMode)};
+function buildSwitcher(){ $('#setsw').innerHTML=SETS.map((s,i)=>`<button data-si="${i}"${i===SI?' class="on"':''}>${s.short}</button>`).join(''); }
+function kokujiVis(){ const kt=$('#kokujitab'); if(kt) kt.style.display=(SET.kokuji&&SET.kokuji.length)?'':'none'; }
+function switchSet(i){ if(i===SI) return; loadSet(i); buildSwitcher(); kokujiVis();
+  curId=null; curKj=null; $('#q').value=''; tab='toc'; document.body.classList.remove('reading'); setTab('toc'); hh(); }
+loadSet(0); buildSwitcher(); kokujiVis();
+$('#setsw').addEventListener('click',e=>{const b=e.target.closest('button[data-si]'); if(b) switchSet(+b.dataset.si);});
+renderTOC(); route(); applyNum(side);
 })();
 </script>
 <script>if('serviceWorker' in navigator && location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').catch(()=>{})}</script>
